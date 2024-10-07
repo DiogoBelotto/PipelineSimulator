@@ -14,14 +14,14 @@ public class MemAcess extends EtapaGeneric {
             return;
         switch (instrucao.getOpcode()) {
             case "lw":
-                Processador.R[instrucao.getOper2()] = Processador.memory[instrucao.getTemp3()];
+                Processador.getR()[instrucao.getOper2()] = Processador.getMemory()[instrucao.getTemp3()];
                 break;
             case "sw":
-                Processador.memory[instrucao.getTemp3()] = instrucao.getOper3();
+                Processador.getMemory()[instrucao.getTemp3()] = instrucao.getOper3();
                 break;
             case "beq":
                 if(instrucao.getTemp3() == -1){
-                    Processador.desvioIncorreto = true;
+                    Processador.setDesvioIncorreto(true);
                     InstructionFetch.pC = instrucao.getOper3()-1;
                 }
             default:

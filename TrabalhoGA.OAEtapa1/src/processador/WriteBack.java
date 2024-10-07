@@ -14,7 +14,7 @@ public class WriteBack extends EtapaGeneric{
             return;
         switch (instrucao.getOpcode()) {
             case "add", "sub":
-                Processador.R[instrucao.getOper1()] = instrucao.getTemp3();
+                Processador.getR()[instrucao.getOper1()] = instrucao.getTemp3();
                 break;
             default:
                 break;

@@ -27,9 +27,9 @@ public class InstructionFetch extends EtapaGeneric {
     }
 
     public String[] fetchInstruction() {
-        if (pC >= Processador.instrucoes.size())
+        if (pC >= Processador.getInstrucoes().size())
             return null;
-        instrucao = Processador.instrucoes.get(pC).replaceFirst("^\\s*", "").split(" ");
+        instrucao = Processador.getInstrucoes().get(pC).replaceFirst("^\\s*", "").split(" ");
         pC++;
         return instrucao;
     }

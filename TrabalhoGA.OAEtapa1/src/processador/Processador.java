@@ -5,15 +5,15 @@ import io.iO;
 import java.util.ArrayList;
 
 public class Processador {
-    public static int[] R;
-    public static ArrayList<String> instrucoes;
+    private static int[] R;
+    private static ArrayList<String> instrucoes;
     private final EtapaGeneric[] etapas;
-    public static boolean desvioIncorreto;
-    public static int[] memory;
-    public static int totalExec;
+    private static boolean desvioIncorreto;
+    private static int[] memory;
+    private static int totalCiclos;
 
     public Processador() {
-        totalExec = 0;
+        totalCiclos = 0;
         memory = new int[100];//A memoria tem arbitrariamente apenas 100 endereços
         desvioIncorreto = false;
         R = new int[32];
@@ -36,7 +36,7 @@ public class Processador {
         String ANSI_BLUE = "\u001B[34m";
 
         while (InstructionFetch.pC < instrucoes.size()+5) {
-            totalExec++;
+            totalCiclos++;
             etapas[4].setInstrucaoAtual(etapas[3].getInstrucaoAtual());
             etapas[3].setInstrucaoAtual(etapas[2].getInstrucaoAtual());
             etapas[2].setInstrucaoAtual(etapas[1].getInstrucaoAtual());
@@ -51,11 +51,11 @@ public class Processador {
 
 
             System.out.print(ANSI_CYAN + "Registradores: ");
-            for (int j = 0; j < 10; j++) {
-                System.out.print(R[j] + "|");
+            for (int j = 0; j < R.length; j++) {
+                System.out.print(R[j] + (j == R.length - 1 ? "" : " | "));
             }
             System.out.println("\n");
-            System.out.print(ANSI_BLUE + "Execução " + totalExec + ": " + ANSI_RESET);
+            System.out.print(ANSI_BLUE + "Execução " + totalCiclos + ": " + ANSI_RESET);
             for (int j = 0; j < etapas.length; j++) {
 
                 if (j == 0){
@@ -77,7 +77,7 @@ public class Processador {
                 etapas[2].getInstrucaoAtual().setValida(false);
             }
         }
-        System.out.println(ANSI_BLUE + "Total de Execuções: " + totalExec + ANSI_RESET);
+        System.out.println(ANSI_BLUE + "Total de Execuções: " + totalCiclos + ANSI_RESET);
     }
 
     //Como não foi implementado os labels, alteramos .fill para a seguinte lógica: (.fill, posicao na memoria, valor)
@@ -93,5 +93,49 @@ public class Processador {
             else
                 break;
         }
+    }
+
+    public static int[] getR() {
+        return R;
+    }
+
+    public static void setR(int[] r) {
+        R = r;
+    }
+
+    public static ArrayList<String> getInstrucoes() {
+        return instrucoes;
+    }
+
+    public static void setInstrucoes(ArrayList<String> instrucoes) {
+        Processador.instrucoes = instrucoes;
+    }
+
+    public EtapaGeneric[] getEtapas() {
+        return etapas;
+    }
+
+    public static boolean isDesvioIncorreto() {
+        return desvioIncorreto;
+    }
+
+    public static void setDesvioIncorreto(boolean desvioIncorreto) {
+        Processador.desvioIncorreto = desvioIncorreto;
+    }
+
+    public static int[] getMemory() {
+        return memory;
+    }
+
+    public static void setMemory(int[] memory) {
+        Processador.memory = memory;
+    }
+
+    public static int getTotalCiclos() {
+        return totalCiclos;
+    }
+
+    public static void setTotalCiclos(int totalCiclos) {
+        Processador.totalCiclos = totalCiclos;
     }
 }
