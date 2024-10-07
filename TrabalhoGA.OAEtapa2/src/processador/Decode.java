@@ -43,7 +43,6 @@ public class Decode extends EtapaGeneric{
                 instrucao.setOper3(Integer.parseInt(vet[3]));
                 instrucao.setOpcode(vet[0]);
                 super.setInstrucaoAtual(instrucao);
-                return;
         }
     }
 
