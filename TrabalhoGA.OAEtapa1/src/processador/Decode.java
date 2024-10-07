@@ -3,8 +3,12 @@ package processador;
 import instrucoes.*;
 
 
-public class Decode extends EtapaGeneric{
-    public Decode() {
+public class Decode{
+    private final Processador processador;
+    private InstrucaoGenerica instrucaoAtual;
+
+    public Decode(Processador processador) {
+        this.processador = processador;
     }
 
     @Override
@@ -16,7 +20,7 @@ public class Decode extends EtapaGeneric{
         if(vet == null){
             InstrucaoGenerica instrucaoReturn = new InstrucaoGenerica();
             instrucaoReturn.setOpcode("noop");
-            super.setInstrucaoAtual(instrucaoReturn); 
+            instrucaoAtual = instrucaoReturn;
             return;
         }
 
@@ -25,7 +29,7 @@ public class Decode extends EtapaGeneric{
             case "noop", "halt":
                 instrucao = new InstrucaoGenerica();
                 instrucao.setOpcode(vet[0]);
-                super.setInstrucaoAtual(instrucao);
+                instrucaoAtual = instrucao;
                 return;
             default:
                 instrucao = new InstrucaoGenerica();
@@ -33,8 +37,20 @@ public class Decode extends EtapaGeneric{
                 instrucao.setOper2(Integer.parseInt(vet[2]));
                 instrucao.setOper3(Integer.parseInt(vet[3]));
                 instrucao.setOpcode(vet[0]);
-                super.setInstrucaoAtual(instrucao);
+                instrucaoAtual = instrucao;
         }
     }
 
+    public InstrucaoGenerica getInstrucaoAtual() {
+        if(instrucaoAtual == null){
+            InstrucaoGenerica instrucaoReturn = new InstrucaoGenerica();
+            instrucaoReturn.setOpcode("noop");
+            return instrucaoReturn;
+        }
+        return instrucaoAtual;
+    }
+
+    public void setInstrucaoAtual(InstrucaoGenerica instrucaoAtual) {
+        this.instrucaoAtual = instrucaoAtual;
+    }
 }

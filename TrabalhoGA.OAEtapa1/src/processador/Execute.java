@@ -2,39 +2,44 @@ package processador;
 
 import instrucoes.InstrucaoGenerica;
 
-public class MemAcess{
+public class Execute {
     private final Processador processador;
     private InstrucaoGenerica instrucaoAtual;
 
-    public MemAcess(Processador processador) {
+    public Execute(Processador processador) {
         this.processador = processador;
     }
 
     @Override
     public String toString() {
-        return "Mem Acess: ";
+        return "Execute: ";
     }
 
-    public void memoryAcess() {
+    public void execute() {
         InstrucaoGenerica instrucao = instrucaoAtual;
         if (!instrucao.isValida())
             return;
         switch (instrucao.getOpcode()) {
-            case "lw":
-                processador.getR()[instrucao.getOper2()] = processador.getMemory()[instrucao.getTemp3()];
+            case "add":
+                instrucao.setTemp3(processador.getR()[instrucao.getOper2()] + processador.getR()[instrucao.getOper3()]);
                 break;
-            case "sw":
-                processador.getMemory()[instrucao.getTemp3()] = instrucao.getOper3();
+            case "sub":
+                instrucao.setTemp3(processador.getR()[instrucao.getOper2()] - processador.getR()[instrucao.getOper3()]);
+                break;
+
+            case "lw", "sw":
+                instrucao.setTemp3(instrucao.getOper3() + processador.getR()[instrucao.getOper1()]);
                 break;
             case "beq":
-                if(instrucao.getTemp3() == -1){
-                    processador.setDesvioIncorreto(true);
-                    InstructionFetch.pC = instrucao.getOper3()-1;
+                if (processador.getR()[instrucao.getOper1()] == processador.getR()[instrucao.getOper2()]) {
+                    instrucao.setTemp3(-1);
                 }
+                break;
             default:
                 break;
         }
     }
+
     public InstrucaoGenerica getInstrucaoAtual() {
         if(instrucaoAtual == null){
             InstrucaoGenerica instrucaoReturn = new InstrucaoGenerica();

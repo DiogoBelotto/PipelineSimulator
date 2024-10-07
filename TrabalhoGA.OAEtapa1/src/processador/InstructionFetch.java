@@ -1,15 +1,19 @@
 package processador;
 
+import instrucoes.InstrucaoGenerica;
+
 import java.util.Arrays;
 
-public class InstructionFetch extends EtapaGeneric {
+public class InstructionFetch{
     public static int pC;
+    private final Processador processador;
+    private InstrucaoGenerica instrucaoAtual;
     //Como nessa etapa a instrucao ainda não foi decodificada não é possível definir um objeto InstrucaoGenerica como nas outras etapas,
     //portanto seta apenas um vetor de String referente a instrucao atual para identificação
     private String[] instrucao;
 
     //Retorna a instução atual junto com as cores respectivas para ficar legível na saída
-    public String getInstrucao() {
+    public String getInstrucaoAtual() {
         String retorno = "";
         retorno = switch (instrucao[0]) {
             case "add", "sub" -> "\u001B[34m" + Arrays.toString(instrucao) + "\u001B[0m";
@@ -22,14 +26,15 @@ public class InstructionFetch extends EtapaGeneric {
         return retorno;
     }
 
-    public InstructionFetch() {
+    public InstructionFetch(Processador processador) {
+        this.processador = processador;
         pC = 0;
     }
 
     public String[] fetchInstruction() {
-        if (pC >= Processador.getInstrucoes().size())
+        if (pC >= processador.getInstrucoes().size())
             return null;
-        instrucao = Processador.getInstrucoes().get(pC).replaceFirst("^\\s*", "").split(" ");
+        instrucao = processador.getInstrucoes().get(pC).replaceFirst("^\\s*", "").split(" ");
         pC++;
         return instrucao;
     }
@@ -41,5 +46,14 @@ public class InstructionFetch extends EtapaGeneric {
     @Override
     public String toString() {
         return "Instruction Fetch: ";
+    }
+
+    public InstrucaoGenerica getInstructionAtual() {
+        if(instrucaoAtual == null){
+            InstrucaoGenerica instrucaoReturn = new InstrucaoGenerica();
+            instrucaoReturn.setOpcode("noop");
+            return instrucaoReturn;
+        }
+        return instrucaoAtual;
     }
 }

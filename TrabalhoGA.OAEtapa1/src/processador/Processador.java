@@ -5,12 +5,18 @@ import io.iO;
 import java.util.ArrayList;
 
 public class Processador {
-    private static int[] R;
-    private static ArrayList<String> instrucoes;
-    private final EtapaGeneric[] etapas;
-    private static boolean desvioIncorreto;
-    private static int[] memory;
-    private static int totalCiclos;
+    private final int[] R;
+    private final ArrayList<String> instrucoes;
+    private boolean desvioIncorreto;
+    private final int[] memory;
+    private int totalCiclos;
+
+    // Dependências de Etapas
+    private final InstructionFetch instructionFetch;
+    private final Decode decode;
+    private final Execute execute;
+    private final MemAcess memAcess;
+    private final WriteBack writeBack;
 
     public Processador() {
         totalCiclos = 0;
@@ -19,12 +25,12 @@ public class Processador {
         R = new int[32];
         R[0] = 0;
         instrucoes = iO.leArquivo();
-        etapas = new EtapaGeneric[5];
-        etapas[0] = new InstructionFetch();
-        etapas[1] = new Decode();
-        etapas[2] = new Excute();
-        etapas[3] = new MemAcess();
-        etapas[4] = new WriteBack();
+        // Inicializa as Etapas
+        this.instructionFetch = new InstructionFetch(this);
+        this.decode = new Decode(this);
+        this.execute = new Execute(this);
+        this.memAcess = new MemAcess(this);
+        this.writeBack = new WriteBack(this);
     }
 
     public void startExecution() {
@@ -35,46 +41,53 @@ public class Processador {
         String ANSI_CYAN = "\u001B[36m";
         String ANSI_BLUE = "\u001B[34m";
 
-        while (InstructionFetch.pC < instrucoes.size()+5) {
+        //Inicia o loop de execução das instruções
+        while (InstructionFetch.pC < instrucoes.size() + 5) {
             totalCiclos++;
-            etapas[4].setInstrucaoAtual(etapas[3].getInstrucaoAtual());
-            etapas[3].setInstrucaoAtual(etapas[2].getInstrucaoAtual());
-            etapas[2].setInstrucaoAtual(etapas[1].getInstrucaoAtual());
-            ((Decode) etapas[1]).InstructionDecode(firstInstruction);
+            //Realiza a passagem de instruções entre as etapas final-inicio
+            writeBack.setInstrucaoAtual(memAcess.getInstrucaoAtual());
+            memAcess.setInstrucaoAtual(execute.getInstrucaoAtual());
+            execute.setInstrucaoAtual(decode.getInstrucaoAtual());
+            decode.InstructionDecode(firstInstruction);
+            //Caso um desvio incorreto foi tomado, descarta da instrução da codificação (acabou de ser decodificada)
             if (desvioIncorreto)
-                etapas[1].getInstrucaoAtual().setValida(false);
-            firstInstruction = ((InstructionFetch) etapas[0]).fetchInstruction();
+                decode.getInstrucaoAtual().setValida(false);
+            firstInstruction = instructionFetch.fetchInstruction();
+
+            //Caso a primeira instrução seja nula, seta a instrução como noop
             if(firstInstruction == null) {
                 InstructionFetch.pC++;
-                ((InstructionFetch) etapas[0]).setInstrucao(new String[]{"noop"});
+                instructionFetch.setInstrucao(new String[]{"noop"});
             }
 
 
+            //Printa os dados do ciclo, registradores, etapas e suas instruções, etc
             System.out.print(ANSI_CYAN + "Registradores: ");
             for (int j = 0; j < R.length; j++) {
                 System.out.print(R[j] + (j == R.length - 1 ? "" : " | "));
             }
             System.out.println("\n");
             System.out.print(ANSI_BLUE + "Execução " + totalCiclos + ": " + ANSI_RESET);
-            for (int j = 0; j < etapas.length; j++) {
 
-                if (j == 0){
-                    System.out.print(ANSI_GREEN + etapas[j] + ((InstructionFetch) etapas[j]).getInstrucao() + " ");
-                }
-                else
-                    System.out.print(ANSI_GREEN + etapas[j] + " [" + etapas[j].getInstrucaoAtual() + ANSI_GREEN + "] ");
-            }
+            System.out.print(ANSI_GREEN + instructionFetch + instructionFetch.getInstrucaoAtual() + " ");
+            System.out.print(ANSI_GREEN + decode + " [" + decode.getInstrucaoAtual() + ANSI_GREEN + "] ");
+            System.out.print(ANSI_GREEN + execute + " [" + execute.getInstrucaoAtual() + ANSI_GREEN + "] ");
+            System.out.print(ANSI_GREEN + memAcess + " [" + memAcess.getInstrucaoAtual() + ANSI_GREEN + "] ");
+            System.out.print(ANSI_GREEN + writeBack + " [" + writeBack.getInstrucaoAtual() + ANSI_GREEN + "] ");
+
             System.out.println("\n" + ANSI_RESET);
 
             if (desvioIncorreto)
                 desvioIncorreto = false;
 
-            ((WriteBack) etapas[4]).writeBack();
-            ((MemAcess) etapas[3]).memoryAcess();
-            ((Excute) etapas[2]).execute();
+            //Executa a lógica de cada Etapa
+            writeBack.writeBack();
+            memAcess.memoryAcess();
+            execute.execute();
+            //Caso exista um desvio incorretamente tomado desativa invalida as instruções anteriores
             if (desvioIncorreto) {
-                etapas[1].getInstrucaoAtual().setValida(false);
-                etapas[2].getInstrucaoAtual().setValida(false);
+                decode.getInstrucaoAtual().setValida(false);
+                execute.getInstrucaoAtual().setValida(false);
             }
         }
         System.out.println(ANSI_BLUE + "Total de Execuções: " + totalCiclos + ANSI_RESET);
@@ -95,47 +108,20 @@ public class Processador {
         }
     }
 
-    public static int[] getR() {
+    public  int[] getR() {
         return R;
     }
 
-    public static void setR(int[] r) {
-        R = r;
-    }
-
-    public static ArrayList<String> getInstrucoes() {
+    public  ArrayList<String> getInstrucoes() {
         return instrucoes;
     }
 
-    public static void setInstrucoes(ArrayList<String> instrucoes) {
-        Processador.instrucoes = instrucoes;
+    public  void setDesvioIncorreto(boolean desvioIncorreto) {
+        this.desvioIncorreto = desvioIncorreto;
     }
 
-    public EtapaGeneric[] getEtapas() {
-        return etapas;
-    }
-
-    public static boolean isDesvioIncorreto() {
-        return desvioIncorreto;
-    }
-
-    public static void setDesvioIncorreto(boolean desvioIncorreto) {
-        Processador.desvioIncorreto = desvioIncorreto;
-    }
-
-    public static int[] getMemory() {
+    public  int[] getMemory() {
         return memory;
     }
 
-    public static void setMemory(int[] memory) {
-        Processador.memory = memory;
-    }
-
-    public static int getTotalCiclos() {
-        return totalCiclos;
-    }
-
-    public static void setTotalCiclos(int totalCiclos) {
-        Processador.totalCiclos = totalCiclos;
-    }
 }
