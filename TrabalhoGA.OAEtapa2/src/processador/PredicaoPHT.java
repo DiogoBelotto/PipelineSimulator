@@ -16,9 +16,7 @@ public class PredicaoPHT {
     // Prediz se o desvio será tomado com base no contador
     public boolean predict(int pc) {
         int estado = pht.getOrDefault(pc, FORTEMENTE_NAO_TOMADO); // Valor default: fortemente não tomado (00)
-        if(estado >= 2)
-            return true;// Retorna verdadeiro caso o estado seja fracamente tomado ou maior
-        return false;
+        return (estado >= FRACAMENTE_TOMADO);// Retorna verdadeiro caso o estado seja fracamente tomado ou maior
     }
 
     public void updatePHT(int pc, boolean desvioTomado) {
