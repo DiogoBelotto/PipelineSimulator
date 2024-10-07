@@ -21,11 +21,10 @@ public class PredicaoPHT {
 
     public void updatePHT(int pc, boolean desvioTomado) {
         int estado = pht.getOrDefault(pc, FORTEMENTE_NAO_TOMADO);
-        if(desvioTomado)
-            if(estado < FORTEMENTE_TOMADO)
+        if (desvioTomado)
+            if (estado < FORTEMENTE_TOMADO)
                 estado++;
-        else
-            if(estado > FORTEMENTE_NAO_TOMADO)
+            else if (estado > FORTEMENTE_NAO_TOMADO)
                 estado--;
         pht.put(pc, estado);
     }

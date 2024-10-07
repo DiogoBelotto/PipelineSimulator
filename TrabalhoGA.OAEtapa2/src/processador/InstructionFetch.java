@@ -27,29 +27,30 @@ public class InstructionFetch extends EtapaGeneric {
     }
 
     public String[] fetchInstruction() {
-        if (pC >= Processador.instrucoes.size())
+        if (pC >= Processador.getInstrucoes().size())
             return null;
-        instrucao = Processador.instrucoes.get(pC).replaceFirst("^\\s*", "").split(" ");
-        if (instrucao[0].equals("beq")){
-            //PC referente ao BEQ atual
-            String pCofBEQ;
-            //Utiliza a Predicao PHT para alterar o PC para a próxima instrucao
-            if(Processador.predicaoPHT.predict(pC)){
-                //Altera o PC para a nova posicao
-                pC = Integer.parseInt(instrucao[3])-1;
-                pCofBEQ = String.valueOf(pC);
-            }
-            else{
-                pCofBEQ = String.valueOf(pC);
-                pC++;
-            }
-            //Adiciona à posição 4 do vetor de String da instrucao, o PC referente a esse BEQ (será utilizado posteriormente na etapa de Execute para verificar se a precição tomada estava correta)
-            String[] instrucaoBEQ = new String[instrucao.length+1];
-            System.arraycopy(instrucao, 0, instrucaoBEQ, 0, instrucao.length);
-            instrucaoBEQ[instrucaoBEQ.length -1] = pCofBEQ;
-            instrucao = instrucaoBEQ;
-        }
-        else pC++;
+        instrucao = Processador.getInstrucoes().get(pC).replaceFirst("^\\s*", "").split(" ");
+        if (Processador.isPredicaoAtiva()) {
+            if (instrucao[0].equals("beq")) {
+                //PC referente ao BEQ atual
+                String pCofBEQ;
+                //Utiliza a Predicao PHT para alterar o PC para a próxima instrucao
+                if (Processador.getPredicaoPHT().predict(pC)) {
+                    //Altera o PC para a nova posicao
+                    pC = Integer.parseInt(instrucao[3]) - 1;
+                    pCofBEQ = String.valueOf(pC);
+                } else {
+                    pCofBEQ = String.valueOf(pC);
+                    pC++;
+                }
+                //Adiciona à posição 4 do vetor de String da instrucao, o PC referente a esse BEQ (será utilizado posteriormente na etapa de Execute para verificar se a precição tomada estava correta)
+                String[] instrucaoBEQ = new String[instrucao.length + 1];
+                System.arraycopy(instrucao, 0, instrucaoBEQ, 0, instrucao.length);
+                instrucaoBEQ[instrucaoBEQ.length - 1] = pCofBEQ;
+                instrucao = instrucaoBEQ;
+            } else pC++;
+        } else
+            pC++;
         return instrucao;
     }
 
