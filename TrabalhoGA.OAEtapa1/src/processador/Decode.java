@@ -4,11 +4,9 @@ import instrucoes.*;
 
 
 public class Decode{
-    private final Processador processador;
     private InstrucaoGenerica instrucaoAtual;
 
-    public Decode(Processador processador) {
-        this.processador = processador;
+    public Decode() {
     }
 
     @Override
@@ -50,7 +48,4 @@ public class Decode{
         return instrucaoAtual;
     }
 
-    public void setInstrucaoAtual(InstrucaoGenerica instrucaoAtual) {
-        this.instrucaoAtual = instrucaoAtual;
-    }
 }

@@ -1,13 +1,9 @@
 package processador;
-
-import instrucoes.InstrucaoGenerica;
-
 import java.util.Arrays;
 
 public class InstructionFetch{
     public static int pC;
     private final Processador processador;
-    private InstrucaoGenerica instrucaoAtual;
     //Como nessa etapa a instrucao ainda não foi decodificada não é possível definir um objeto InstrucaoGenerica como nas outras etapas,
     //portanto seta apenas um vetor de String referente a instrucao atual para identificação
     private String[] instrucao;
@@ -46,14 +42,5 @@ public class InstructionFetch{
     @Override
     public String toString() {
         return "Instruction Fetch: ";
-    }
-
-    public InstrucaoGenerica getInstructionAtual() {
-        if(instrucaoAtual == null){
-            InstrucaoGenerica instrucaoReturn = new InstrucaoGenerica();
-            instrucaoReturn.setOpcode("noop");
-            return instrucaoReturn;
-        }
-        return instrucaoAtual;
     }
 }

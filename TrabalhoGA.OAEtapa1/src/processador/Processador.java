@@ -27,7 +27,7 @@ public class Processador {
         instrucoes = iO.leArquivo();
         // Inicializa as Etapas
         this.instructionFetch = new InstructionFetch(this);
-        this.decode = new Decode(this);
+        this.decode = new Decode();
         this.execute = new Execute(this);
         this.memAcess = new MemAcess(this);
         this.writeBack = new WriteBack(this);
