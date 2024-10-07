@@ -6,14 +6,20 @@ import java.util.ArrayList;
 import java.util.Scanner;
 
 public class Processador {
-    private static int[] R;
-    private static ArrayList<String> instrucoes;
-    private final EtapaGeneric[] etapas;
-    private static boolean desvioIncorreto;
-    private static int[] memory;
-    private static PredicaoPHT predicaoPHT;
-    private static int totalInstrucoesExec, totalInstrucoesDescartadas, totalCiclos;
-    private static boolean predicaoAtiva;
+    private final int[] R;
+    private final ArrayList<String> instrucoes;
+    private boolean desvioIncorreto;
+    private final int[] memory;
+    private final PredicaoPHT predicaoPHT;
+    private int totalInstrucoesExec, totalInstrucoesDescartadas, totalCiclos;
+    private boolean predicaoAtiva;
+
+    // Dependências de Etapas
+    private final InstructionFetch instructionFetch;
+    private final Decode decode;
+    private final Execute execute;
+    private final MemAcess memAcess;
+    private final WriteBack writeBack;
 
     public Processador() {
         totalInstrucoesExec = 0;
@@ -25,17 +31,18 @@ public class Processador {
         R = new int[32];
         R[0] = 0;
         instrucoes = iO.leArquivo();
-        etapas = new EtapaGeneric[5];
-        etapas[0] = new InstructionFetch();
-        etapas[1] = new Decode();
-        etapas[2] = new Execute();
-        etapas[3] = new MemAcess();
-        etapas[4] = new WriteBack();
+        // Inicializa as Etapas
+        this.instructionFetch = new InstructionFetch(this);
+        this.decode = new Decode(this);
+        this.execute = new Execute(this);
+        this.memAcess = new MemAcess(this);
+        this.writeBack = new WriteBack(this);
     }
 
     public void startExecution() {
         dataMemoryLoader();
         String[] firstInstruction = null;
+        //Cores para representação nas saídas
         String ANSI_RESET = "\u001B[0m";
         String ANSI_GREEN = "\u001B[32m";
         String ANSI_CYAN = "\u001B[36m";
@@ -61,52 +68,81 @@ public class Processador {
         //Inicia o loop de execução das instruções
         while (InstructionFetch.pC < instrucoes.size() + 5) {
             totalCiclos++;
-            etapas[4].setInstrucaoAtual(etapas[3].getInstrucaoAtual());
-            etapas[3].setInstrucaoAtual(etapas[2].getInstrucaoAtual());
-            etapas[2].setInstrucaoAtual(etapas[1].getInstrucaoAtual());
-            ((Decode) etapas[1]).InstructionDecode(firstInstruction);
+            //Realiza a passagem de instruções entre as etapas final-inicio
+            writeBack.setInstrucaoAtual(memAcess.getInstrucaoAtual());
+            memAcess.setInstrucaoAtual(execute.getInstrucaoAtual());
+            execute.setInstrucaoAtual(decode.getInstrucaoAtual());
+            decode.InstructionDecode(firstInstruction);
+            //Caso um desvio incorreto foi tomado, descarta da instrução da codificação (acabou de ser decodificada)
             if (desvioIncorreto) {
-                etapas[1].getInstrucaoAtual().setValida(false);
+                decode.getInstrucaoAtual().setValida(false);
                 totalInstrucoesDescartadas++;
             }
+            firstInstruction = instructionFetch.fetchInstruction();
 
-            firstInstruction = ((InstructionFetch) etapas[0]).fetchInstruction();
+
+            //Novo vetor que servirá para adicionar uma String ao inicio da instrução ainda não decodificada mas que já deve ser descartada, para identificação na etapa de decod
+            String[] instructionAux;
+
+
             if (firstInstruction == null) {
                 InstructionFetch.pC++;
-                ((InstructionFetch) etapas[0]).setInstrucao(new String[]{"noop"});
+                //Se a primeira atual é nula, foi feito um desvio incorreto e estamos usando predição, define a mesma para "noop" com a tag de NÂO válida
+                if (desvioIncorreto && predicaoAtiva) {
+                    instructionFetch.setInstrucaoAtual(new String[]{"noop"});
+                    firstInstruction = new String[]{"true", "noop"};
+                } else {
+                    //A instrução é nula, consequentemente noop, mas não deve ser considerada NÂO válida
+                    instructionFetch.setInstrucaoAtual(new String[]{"noop"});
+                    firstInstruction = new String[]{"false", "noop"};
+                }
+            } else {
+                //Primeira instrução não nula, é movida para o novo vetor auxiliar,
+                instructionAux = new String[firstInstruction.length + 1];
+                System.arraycopy(firstInstruction, 0, instructionAux, 1, firstInstruction.length);
+                if (desvioIncorreto && predicaoAtiva) {
+                    instructionAux[0] = "true"; //foi feito um desvio incorreto e estamos usando predição, portanto deve ter a tag de NÂO válida
+                } else
+                    instructionAux[0] = "false";//não é inválida
+                firstInstruction = instructionAux;  //a primeira instrução começa a referenciar o novo vetor auxiliar criado com a TAG valida/invalida no inicio
             }
 
 
+            //Printa os dados do ciclo, registradores, etapas e suas instruções, etc
             System.out.print(ANSI_CYAN + "Registradores: ");
             for (int j = 0; j < R.length; j++) {
                 System.out.print(R[j] + (j == R.length - 1 ? "" : " | "));
             }
             System.out.println("\n");
-            System.out.println(ANSI_BLUE + "Execução: " + totalCiclos + ANSI_RESET);
-            for (int j = 0; j < etapas.length; j++) {
+            System.out.print(ANSI_BLUE + "Execução " + totalCiclos + ": " + ANSI_RESET);
 
-                if (j == 0) {
-                    System.out.print(ANSI_GREEN + etapas[j] + ((InstructionFetch) etapas[j]).getInstrucao() + " ");
-                } else
-                    System.out.print(ANSI_GREEN + etapas[j] + " [" + etapas[j].getInstrucaoAtual() + ANSI_GREEN + "] ");
-            }
+            System.out.print(ANSI_GREEN + instructionFetch + instructionFetch.getInstrucaoAtual() + " ");
+            System.out.print(ANSI_GREEN + decode + " [" + decode.getInstrucaoAtual() + ANSI_GREEN + "] ");
+            System.out.print(ANSI_GREEN + execute + " [" + execute.getInstrucaoAtual() + ANSI_GREEN + "] ");
+            System.out.print(ANSI_GREEN + memAcess + " [" + memAcess.getInstrucaoAtual() + ANSI_GREEN + "] ");
+            System.out.print(ANSI_GREEN + writeBack + " [" + writeBack.getInstrucaoAtual() + ANSI_GREEN + "] ");
+
             System.out.println("\n" + ANSI_RESET);
 
             if (desvioIncorreto)
                 desvioIncorreto = false;
 
-            ((WriteBack) etapas[4]).writeBack();
-            ((MemAcess) etapas[3]).memoryAcess();
-            ((Execute) etapas[2]).execute();
+            //Executa a lógica de cada Etapa
+            writeBack.writeBack();
+            memAcess.memoryAcess();
+            execute.execute();
+            //Caso exista um desvio incorretamente tomado desativa invalida as instruções anteriores
             if (desvioIncorreto) {
-                etapas[1].getInstrucaoAtual().setValida(false);
-                if (!predicaoAtiva){
-                    etapas[2].getInstrucaoAtual().setValida(false);
+                decode.getInstrucaoAtual().setValida(false);
+                if (!predicaoAtiva) {
+                    execute.getInstrucaoAtual().setValida(false);
                     totalInstrucoesDescartadas++;
                 }
                 totalInstrucoesDescartadas++;
             }
         }
+
+        //Informações finais
         System.out.println(ANSI_BLUE + "Total de Ciclos: " + totalCiclos + ANSI_RESET);
         System.out.println(ANSI_BLUE + "Total de Instruções executadas: " + totalInstrucoesExec + ANSI_RESET);
         System.out.println(ANSI_BLUE + "Total de Instruções Descartadas: " + totalInstrucoesDescartadas + ANSI_RESET);
@@ -126,79 +162,49 @@ public class Processador {
         }
     }
 
-    public static int[] getR() {
+    public int[] getR() {
         return R;
     }
 
-    public static void setR(int[] r) {
-        R = r;
-    }
-
-    public static ArrayList<String> getInstrucoes() {
+    public ArrayList<String> getInstrucoes() {
         return instrucoes;
     }
 
-    public static void setInstrucoes(ArrayList<String> instrucoes) {
-        Processador.instrucoes = instrucoes;
-    }
-
-    public EtapaGeneric[] getEtapas() {
-        return etapas;
-    }
-
-    public static boolean isDesvioIncorreto() {
+    public boolean isDesvioIncorreto() {
         return desvioIncorreto;
     }
 
-    public static void setDesvioIncorreto(boolean desvioIncorreto) {
-        Processador.desvioIncorreto = desvioIncorreto;
+    public void setDesvioIncorreto(boolean desvioIncorreto) {
+        this.desvioIncorreto = desvioIncorreto;
     }
 
-    public static int[] getMemory() {
+    public int[] getMemory() {
         return memory;
     }
 
-    public static void setMemory(int[] memory) {
-        Processador.memory = memory;
-    }
-
-    public static int getTotalCiclos() {
-        return totalCiclos;
-    }
-
-    public static void setTotalCiclos(int totalCiclos) {
-        Processador.totalCiclos = totalCiclos;
-    }
-
-    public static PredicaoPHT getPredicaoPHT() {
+    public PredicaoPHT getPredicaoPHT() {
         return predicaoPHT;
     }
 
-    public static void setPredicaoPHT(PredicaoPHT predicaoPHT) {
-        Processador.predicaoPHT = predicaoPHT;
-    }
 
-    public static int getTotalInstrucoesExec() {
+    public int getTotalInstrucoesExec() {
         return totalInstrucoesExec;
     }
 
-    public static void setTotalInstrucoesExec(int totalInstrucoesExec) {
-        Processador.totalInstrucoesExec = totalInstrucoesExec;
+    public void setTotalInstrucoesExec(int totalInstrucoesExec) {
+        this.totalInstrucoesExec = totalInstrucoesExec;
     }
 
-    public static int getTotalInstrucoesDescartadas() {
+    public int getTotalInstrucoesDescartadas() {
         return totalInstrucoesDescartadas;
     }
 
-    public static void setTotalInstrucoesDescartadas(int totalInstrucoesDescartadas) {
-        Processador.totalInstrucoesDescartadas = totalInstrucoesDescartadas;
+    public void setTotalInstrucoesDescartadas(int totalInstrucoesDescartadas) {
+        this.totalInstrucoesDescartadas = totalInstrucoesDescartadas;
     }
 
-    public static boolean isPredicaoAtiva() {
+    public boolean isPredicaoAtiva() {
         return predicaoAtiva;
     }
 
-    public static void setPredicaoAtiva(boolean predicaoAtiva) {
-        Processador.predicaoAtiva = predicaoAtiva;
-    }
 }
