@@ -131,7 +131,7 @@ public class Processador {
             writeBack.writeBack();
             memAcess.memoryAcess();
             execute.execute();
-            //Caso exista um desvio incorretamente tomado desativa invalida as instruções anteriores
+            //Caso exista um desvio incorretamente tomado invalida as instruções anteriores
             if (desvioIncorreto) {
                 decode.getInstrucaoAtual().setValida(false);
                 if (!predicaoAtiva) {
@@ -142,7 +142,7 @@ public class Processador {
             }
         }
 
-        //Informações finais
+        //Print Informações finais
         System.out.println(ANSI_BLUE + "Total de Ciclos: " + totalCiclos + ANSI_RESET);
         System.out.println(ANSI_BLUE + "Total de Instruções executadas: " + totalInstrucoesExec + ANSI_RESET);
         System.out.println(ANSI_BLUE + "Total de Instruções Descartadas: " + totalInstrucoesDescartadas + ANSI_RESET);

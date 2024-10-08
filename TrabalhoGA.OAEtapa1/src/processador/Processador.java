@@ -9,7 +9,7 @@ public class Processador {
     private final ArrayList<String> instrucoes;
     private boolean desvioIncorreto;
     private final int[] memory;
-    private int totalCiclos;
+    private int totalInstrucoesExec, totalInstrucoesDescartadas, totalCiclos;
 
     // Dependências de Etapas
     private final InstructionFetch instructionFetch;
@@ -19,6 +19,8 @@ public class Processador {
     private final WriteBack writeBack;
 
     public Processador() {
+        totalInstrucoesExec = 0;
+        totalInstrucoesDescartadas = 0;
         totalCiclos = 0;
         memory = new int[100];//A memoria tem arbitrariamente apenas 100 endereços
         desvioIncorreto = false;
@@ -50,8 +52,11 @@ public class Processador {
             execute.setInstrucaoAtual(decode.getInstrucaoAtual());
             decode.InstructionDecode(firstInstruction);
             //Caso um desvio incorreto foi tomado, descarta da instrução da codificação (acabou de ser decodificada)
-            if (desvioIncorreto)
+            if (desvioIncorreto){
                 decode.getInstrucaoAtual().setValida(false);
+                totalInstrucoesDescartadas++;
+            }
+
             firstInstruction = instructionFetch.fetchInstruction();
 
             //Caso a primeira instrução seja nula, seta a instrução como noop
@@ -84,13 +89,17 @@ public class Processador {
             writeBack.writeBack();
             memAcess.memoryAcess();
             execute.execute();
-            //Caso exista um desvio incorretamente tomado desativa invalida as instruções anteriores
+            //Caso exista um desvio incorretamente tomado invalida as instruções anteriores
             if (desvioIncorreto) {
                 decode.getInstrucaoAtual().setValida(false);
                 execute.getInstrucaoAtual().setValida(false);
+                totalInstrucoesDescartadas +=2;
             }
         }
-        System.out.println(ANSI_BLUE + "Total de Execuções: " + totalCiclos + ANSI_RESET);
+        //Print Informações finais
+        System.out.println(ANSI_BLUE + "Total de Ciclos: " + totalCiclos + ANSI_RESET);
+        System.out.println(ANSI_BLUE + "Total de Instruções executadas: " + totalInstrucoesExec + ANSI_RESET);
+        System.out.println(ANSI_BLUE + "Total de Instruções Descartadas: " + totalInstrucoesDescartadas + ANSI_RESET);
     }
 
     //Como não foi implementado os labels, alteramos .fill para a seguinte lógica: (.fill, posicao na memoria, valor)
@@ -122,6 +131,14 @@ public class Processador {
 
     public  int[] getMemory() {
         return memory;
+    }
+
+    public int getTotalInstrucoesExec() {
+        return totalInstrucoesExec;
+    }
+
+    public void setTotalInstrucoesExec(int totalInstrucoesExec) {
+        this.totalInstrucoesExec = totalInstrucoesExec;
     }
 
 }

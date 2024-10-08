@@ -30,6 +30,7 @@ public class MemAcess{
                 if(instrucao.getTemp3() == -1){
                     processador.setDesvioIncorreto(true);
                     InstructionFetch.pC = instrucao.getOper3()-1;
+                    processador.setTotalInstrucoesExec(processador.getTotalInstrucoesExec() - 1);
                 }
             default:
                 break;
