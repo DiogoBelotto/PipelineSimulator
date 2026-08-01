@@ -1,9 +1,10 @@
 package processador;
 
 import java.util.HashMap;
+import java.util.Map;
 
 public class PredicaoPHT {
-    private HashMap<Integer, Integer> pht; // Tabela de História de Desvios (PHT) armazenada em um HashMap
+    private final Map<Integer, Integer> pht; // Tabela de História de Desvios (PHT)
     private static final int FORTEMENTE_TOMADO = 3;  // 11
     private static final int FRACAMENTE_TOMADO = 2;    // 10
     private static final int FRACAMENTE_NAO_TOMADO = 1; // 01
@@ -21,11 +22,13 @@ public class PredicaoPHT {
 
     public void updatePHT(int pc, boolean desvioTomado) {
         int estado = pht.getOrDefault(pc, FORTEMENTE_NAO_TOMADO);
-        if (desvioTomado)
-            if (estado < FORTEMENTE_TOMADO)
+        if (desvioTomado) {
+            if (estado < FORTEMENTE_TOMADO) {
                 estado++;
-            else if (estado > FORTEMENTE_NAO_TOMADO)
+            } else if (estado > FORTEMENTE_NAO_TOMADO) {
                 estado--;
+            }
+        }
         pht.put(pc, estado);
     }
 

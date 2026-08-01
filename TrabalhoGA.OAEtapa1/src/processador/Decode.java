@@ -1,12 +1,13 @@
 package processador;
 
-import instrucoes.*;
+import instrucoes.InstrucaoGenerica;
 
 
-public class Decode{
+public class Decode {
     private InstrucaoGenerica instrucaoAtual;
 
     public Decode() {
+        instrucaoAtual = InstrucaoGenerica.noop();
     }
 
     @Override
@@ -14,37 +15,36 @@ public class Decode{
         return "Decode: ";
     }
 
-    public void InstructionDecode(String[] vet){
-        if(vet == null){
-            InstrucaoGenerica instrucaoReturn = new InstrucaoGenerica();
-            instrucaoReturn.setOpcode("noop");
-            instrucaoAtual = instrucaoReturn;
+    public void instructionDecode(String[] componentes) {
+        if (componentes == null) {
+            instrucaoAtual = InstrucaoGenerica.noop();
             return;
         }
 
-        InstrucaoGenerica instrucao;
-        switch (vet[0]){
+        InstrucaoGenerica instrucao = new InstrucaoGenerica();
+        String opcode = componentes[0];
+        instrucao.setOpcode(opcode);
+
+        switch (opcode) {
             case "noop", "halt":
-                instrucao = new InstrucaoGenerica();
-                instrucao.setOpcode(vet[0]);
                 instrucaoAtual = instrucao;
                 return;
             default:
-                instrucao = new InstrucaoGenerica();
-                instrucao.setOper1(Integer.parseInt(vet[1]));
-                instrucao.setOper2(Integer.parseInt(vet[2]));
-                instrucao.setOper3(Integer.parseInt(vet[3]));
-                instrucao.setOpcode(vet[0]);
+                instrucao.setOper1(Integer.parseInt(componentes[1]));
+                instrucao.setOper2(Integer.parseInt(componentes[2]));
+                instrucao.setOper3(Integer.parseInt(componentes[3]));
                 instrucaoAtual = instrucao;
         }
     }
 
+    /**
+     * Mantém compatibilidade com a assinatura original do projeto.
+     */
+    public void InstructionDecode(String[] componentes) {
+        instructionDecode(componentes);
+    }
+
     public InstrucaoGenerica getInstrucaoAtual() {
-        if(instrucaoAtual == null){
-            InstrucaoGenerica instrucaoReturn = new InstrucaoGenerica();
-            instrucaoReturn.setOpcode("noop");
-            return instrucaoReturn;
-        }
         return instrucaoAtual;
     }
 

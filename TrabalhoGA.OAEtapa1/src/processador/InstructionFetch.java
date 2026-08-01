@@ -1,7 +1,8 @@
 package processador;
+
 import java.util.Arrays;
 
-public class InstructionFetch{
+public class InstructionFetch {
     public static int pC;
     private final Processador processador;
     //Como nessa etapa a instrucao ainda não foi decodificada não é possível definir um objeto InstrucaoGenerica como nas outras etapas,
@@ -24,6 +25,7 @@ public class InstructionFetch{
 
     public InstructionFetch(Processador processador) {
         this.processador = processador;
+        instrucao = new String[]{"noop"};
         pC = 0;
     }
 

@@ -1,0 +1,33 @@
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Visual Studio Code
+.vscode/
+
+# Eclipse
+.classpath
+.project
+.settings/
+.apt_generated/
+
+# NetBeans
+nbproject/private/
+nbbuild/
+nbdist/
+
+# Java build outputs
+*.class
+out/
+bin/
+build/
+target/
+dist/
+.gradle/
+
+# Logs and operating system files
+*.log
+.DS_Store
+Thumbs.db

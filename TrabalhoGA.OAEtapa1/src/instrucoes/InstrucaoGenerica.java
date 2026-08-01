@@ -9,6 +9,12 @@ public class InstrucaoGenerica {
         valida = true;
     }
 
+    public static InstrucaoGenerica noop() {
+        InstrucaoGenerica instrucao = new InstrucaoGenerica();
+        instrucao.setOpcode("noop");
+        return instrucao;
+    }
+
     public boolean isValida() {
         return valida;
     }

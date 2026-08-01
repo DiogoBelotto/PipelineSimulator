@@ -6,53 +6,75 @@ import java.util.ArrayList;
 import java.util.Scanner;
 
 public class Processador {
-    private final int[] R;
-    private final ArrayList<String> instrucoes;
-    private boolean desvioIncorreto;
-    private final int[] memory;
-    private final PredicaoPHT predicaoPHT;
-    private int totalInstrucoesExec, totalInstrucoesDescartadas, totalCiclos;
-    private boolean predicaoAtiva;
+    private static final int QUANTIDADE_REGISTRADORES = 32;
+    private static final int TAMANHO_MEMORIA = 100;
+    private static final int ESTAGIOS_PIPELINE = 5;
 
-    // Dependências de Etapas
+    private static final String ANSI_RESET = "\u001B[0m";
+    private static final String ANSI_GREEN = "\u001B[32m";
+    private static final String ANSI_CYAN = "\u001B[36m";
+    private static final String ANSI_BLUE = "\u001B[34m";
+
+    private final int[] registradores;
+    private final ArrayList<String> instrucoes;
+    private final int[] memoria;
+    private final PredicaoPHT predicaoPHT;
+    private boolean desvioIncorreto;
+    private boolean predicaoAtiva;
+    private int totalInstrucoesExec;
+    private int totalInstrucoesDescartadas;
+    private int totalCiclos;
+
+    // Dependências das etapas do pipeline.
     private final InstructionFetch instructionFetch;
     private final Decode decode;
     private final Execute execute;
     private final MemAcess memAcess;
     private final WriteBack writeBack;
 
+    @SuppressWarnings("this-escape")
     public Processador() {
-        totalInstrucoesExec = 0;
-        totalInstrucoesDescartadas = 0;
-        predicaoPHT = new PredicaoPHT();
-        totalCiclos = 0;
-        memory = new int[100];//A memoria tem arbitrariamente apenas 100 endereços
-        desvioIncorreto = false;
-        R = new int[32];
-        R[0] = 0;
+        registradores = new int[QUANTIDADE_REGISTRADORES];
+        memoria = new int[TAMANHO_MEMORIA];
         instrucoes = iO.leArquivo();
-        // Inicializa as Etapas
-        this.instructionFetch = new InstructionFetch(this);
-        this.decode = new Decode(this);
-        this.execute = new Execute(this);
-        this.memAcess = new MemAcess(this);
-        this.writeBack = new WriteBack(this);
+        predicaoPHT = new PredicaoPHT();
+
+        instructionFetch = new InstructionFetch(this);
+        decode = new Decode(this);
+        execute = new Execute(this);
+        memAcess = new MemAcess(this);
+        writeBack = new WriteBack(this);
     }
 
     public void startExecution() {
         dataMemoryLoader();
-        String[] firstInstruction = null;
-        //Cores para representação nas saídas
-        String ANSI_RESET = "\u001B[0m";
-        String ANSI_GREEN = "\u001B[32m";
-        String ANSI_CYAN = "\u001B[36m";
-        String ANSI_BLUE = "\u001B[34m";
+        selecionarMecanismoPredicao();
+        String[] primeiraInstrucao = null;
 
+        while (pipelineEmExecucao()) {
+            totalCiclos++;
+            avancarPipeline(primeiraInstrucao);
+            descartarInstrucaoDecodificadaSeNecessario();
 
-        //Verifica se o usuário quer o mecanismo de predição ativo ou não
+            primeiraInstrucao = prepararInstrucaoBuscada(instructionFetch.fetchInstruction());
+
+            exibirEstadoPipeline();
+            limparSinalDesvio();
+            executarEtapas();
+            descartarInstrucoesAposDesvio();
+        }
+
+        exibirResumo();
+    }
+
+    private void selecionarMecanismoPredicao() {
         Scanner scanner = new Scanner(System.in);
         do {
-            System.out.print(ANSI_BLUE + "[1] Mecanismo de predição PHT 2-bits\n[2] Mecanismo estático de Desvio Não Tomado\nEscolha a opção [1] ou [2]:  " + ANSI_RESET);
+            System.out.print(ANSI_BLUE
+                    + "[1] Mecanismo de predição PHT 2-bits\n"
+                    + "[2] Mecanismo estático de Desvio Não Tomado\n"
+                    + "Escolha a opção [1] ou [2]:  "
+                    + ANSI_RESET);
             String resposta = scanner.nextLine();
             if (resposta.equalsIgnoreCase("1")) {
                 predicaoAtiva = true;
@@ -63,107 +85,110 @@ public class Processador {
             }
             System.out.println("Entrada inválida, tente novamente!");
         } while (true);
+    }
 
+    private boolean pipelineEmExecucao() {
+        return InstructionFetch.pC < instrucoes.size() + ESTAGIOS_PIPELINE;
+    }
 
-        //Inicia o loop de execução das instruções
-        while (InstructionFetch.pC < instrucoes.size() + 5) {
-            totalCiclos++;
-            //Realiza a passagem de instruções entre as etapas final-inicio
-            writeBack.setInstrucaoAtual(memAcess.getInstrucaoAtual());
-            memAcess.setInstrucaoAtual(execute.getInstrucaoAtual());
-            execute.setInstrucaoAtual(decode.getInstrucaoAtual());
-            decode.InstructionDecode(firstInstruction);
-            //Caso um desvio incorreto foi tomado, descarta da instrução da codificação (acabou de ser decodificada)
-            if (desvioIncorreto) {
-                decode.getInstrucaoAtual().setValida(false);
-                totalInstrucoesDescartadas++;
-            }
-            firstInstruction = instructionFetch.fetchInstruction();
+    private void avancarPipeline(String[] primeiraInstrucao) {
+        writeBack.setInstrucaoAtual(memAcess.getInstrucaoAtual());
+        memAcess.setInstrucaoAtual(execute.getInstrucaoAtual());
+        execute.setInstrucaoAtual(decode.getInstrucaoAtual());
+        decode.instructionDecode(primeiraInstrucao);
+    }
 
+    private void descartarInstrucaoDecodificadaSeNecessario() {
+        if (desvioIncorreto) {
+            decode.getInstrucaoAtual().setValida(false);
+            incrementarInstrucoesDescartadas();
+        }
+    }
 
-            //Novo vetor que servirá para adicionar uma String ao inicio da instrução ainda não decodificada mas que já deve ser descartada, para identificação na etapa de decod
-            String[] instructionAux;
+    private String[] prepararInstrucaoBuscada(String[] instrucao) {
+        boolean instrucaoDescartada = desvioIncorreto && predicaoAtiva;
 
-
-            if (firstInstruction == null) {
-                InstructionFetch.pC++;
-                //Se a primeira atual é nula, foi feito um desvio incorreto e estamos usando predição, define a mesma para "noop" com a tag de NÂO válida
-                if (desvioIncorreto && predicaoAtiva) {
-                    instructionFetch.setInstrucaoAtual(new String[]{"noop"});
-                    firstInstruction = new String[]{"true", "noop"};
-                } else {
-                    //A instrução é nula, consequentemente noop, mas não deve ser considerada NÂO válida
-                    instructionFetch.setInstrucaoAtual(new String[]{"noop"});
-                    firstInstruction = new String[]{"false", "noop"};
-                }
-            } else {
-                //Primeira instrução não nula, é movida para o novo vetor auxiliar,
-                instructionAux = new String[firstInstruction.length + 1];
-                System.arraycopy(firstInstruction, 0, instructionAux, 1, firstInstruction.length);
-                if (desvioIncorreto && predicaoAtiva) {
-                    instructionAux[0] = "true"; //foi feito um desvio incorreto e estamos usando predição, portanto deve ter a tag de NÂO válida
-                } else
-                    instructionAux[0] = "false";//não é inválida
-                firstInstruction = instructionAux;  //a primeira instrução começa a referenciar o novo vetor auxiliar criado com a TAG valida/invalida no inicio
-            }
-
-
-            //Printa os dados do ciclo, registradores, etapas e suas instruções, etc
-            System.out.print(ANSI_CYAN + "Registradores: ");
-            for (int j = 0; j < R.length; j++) {
-                System.out.print(R[j] + (j == R.length - 1 ? "" : " | "));
-            }
-            System.out.println("\n");
-            System.out.print(ANSI_BLUE + "Execução " + totalCiclos + ": " + ANSI_RESET);
-
-            System.out.print(ANSI_GREEN + instructionFetch + instructionFetch.getInstrucaoAtual() + " ");
-            System.out.print(ANSI_GREEN + decode + " [" + decode.getInstrucaoAtual() + ANSI_GREEN + "] ");
-            System.out.print(ANSI_GREEN + execute + " [" + execute.getInstrucaoAtual() + ANSI_GREEN + "] ");
-            System.out.print(ANSI_GREEN + memAcess + " [" + memAcess.getInstrucaoAtual() + ANSI_GREEN + "] ");
-            System.out.print(ANSI_GREEN + writeBack + " [" + writeBack.getInstrucaoAtual() + ANSI_GREEN + "] ");
-
-            System.out.println("\n" + ANSI_RESET);
-
-            if (desvioIncorreto)
-                desvioIncorreto = false;
-
-            //Executa a lógica de cada Etapa
-            writeBack.writeBack();
-            memAcess.memoryAcess();
-            execute.execute();
-            //Caso exista um desvio incorretamente tomado invalida as instruções anteriores
-            if (desvioIncorreto) {
-                decode.getInstrucaoAtual().setValida(false);
-                if (!predicaoAtiva) {
-                    execute.getInstrucaoAtual().setValida(false);
-                    totalInstrucoesDescartadas++;
-                }
-                totalInstrucoesDescartadas++;
-            }
+        if (instrucao == null) {
+            InstructionFetch.pC++;
+            instructionFetch.setInstrucaoAtual(new String[]{"noop"});
+            return new String[]{Boolean.toString(instrucaoDescartada), "noop"};
         }
 
-        //Print Informações finais
+        String[] instrucaoComValidade = new String[instrucao.length + 1];
+        System.arraycopy(instrucao, 0, instrucaoComValidade, 1, instrucao.length);
+        instrucaoComValidade[0] = Boolean.toString(instrucaoDescartada);
+        return instrucaoComValidade;
+    }
+
+    private void exibirEstadoPipeline() {
+        System.out.print(ANSI_CYAN + "Registradores: ");
+        for (int i = 0; i < registradores.length; i++) {
+            System.out.print(registradores[i] + (i == registradores.length - 1 ? "" : " | "));
+        }
+        System.out.println("\n");
+        System.out.print(ANSI_BLUE + "Execução " + totalCiclos + ": " + ANSI_RESET);
+
+        System.out.print(ANSI_GREEN + instructionFetch + instructionFetch.getInstrucaoAtual() + " ");
+        System.out.print(ANSI_GREEN + decode + " [" + decode.getInstrucaoAtual() + ANSI_GREEN + "] ");
+        System.out.print(ANSI_GREEN + execute + " [" + execute.getInstrucaoAtual() + ANSI_GREEN + "] ");
+        System.out.print(ANSI_GREEN + memAcess + " [" + memAcess.getInstrucaoAtual() + ANSI_GREEN + "] ");
+        System.out.print(ANSI_GREEN + writeBack + " [" + writeBack.getInstrucaoAtual() + ANSI_GREEN + "] ");
+
+        System.out.println("\n" + ANSI_RESET);
+    }
+
+    private void limparSinalDesvio() {
+        if (desvioIncorreto) {
+            desvioIncorreto = false;
+        }
+    }
+
+    private void executarEtapas() {
+        writeBack.writeBack();
+        memAcess.memoryAcess();
+        execute.execute();
+    }
+
+    private void descartarInstrucoesAposDesvio() {
+        if (desvioIncorreto) {
+            decode.getInstrucaoAtual().setValida(false);
+            if (!predicaoAtiva) {
+                execute.getInstrucaoAtual().setValida(false);
+                incrementarInstrucoesDescartadas();
+            }
+            incrementarInstrucoesDescartadas();
+        }
+    }
+
+    private void exibirResumo() {
         System.out.println(ANSI_BLUE + "Total de Ciclos: " + totalCiclos + ANSI_RESET);
         System.out.println(ANSI_BLUE + "Total de Instruções executadas: " + totalInstrucoesExec + ANSI_RESET);
         System.out.println(ANSI_BLUE + "Total de Instruções Descartadas: " + totalInstrucoesDescartadas + ANSI_RESET);
     }
 
-    //Como não foi implementado os labels, alteramos .fill para a seguinte lógica: (.fill, posicao na memoria, valor)
-    //Essa função irá carregar os valores .fill para a memória e remove-los da lista de instruções
-    //Foi feito isso para manter a lógica de acesso a memória da instrução lw mesmo sem os labels
+    // Como não foram implementados labels, .fill segue o formato: posição na memória e valor.
     public void dataMemoryLoader() {
         for (int i = instrucoes.size() - 1; i >= 0; i--) {
-            String[] vet = instrucoes.get(i).replaceFirst("^\\s*", "").split(" ");
-            if (vet[0].equals(".fill")) {
-                memory[Integer.parseInt(vet[1])] = Integer.parseInt(vet[2]);
+            String[] componentes = instrucoes.get(i).replaceFirst("^\\s*", "").split(" ");
+            if (componentes[0].equals(".fill")) {
+                memoria[Integer.parseInt(componentes[1])] = Integer.parseInt(componentes[2]);
                 instrucoes.remove(i);
-            } else
+            } else {
                 break;
+            }
         }
     }
 
+    void incrementarInstrucoesExecutadas() {
+        totalInstrucoesExec++;
+    }
+
+    void incrementarInstrucoesDescartadas() {
+        totalInstrucoesDescartadas++;
+    }
+
     public int[] getR() {
-        return R;
+        return registradores;
     }
 
     public ArrayList<String> getInstrucoes() {
@@ -179,13 +204,12 @@ public class Processador {
     }
 
     public int[] getMemory() {
-        return memory;
+        return memoria;
     }
 
     public PredicaoPHT getPredicaoPHT() {
         return predicaoPHT;
     }
-
 
     public int getTotalInstrucoesExec() {
         return totalInstrucoesExec;
@@ -206,5 +230,4 @@ public class Processador {
     public boolean isPredicaoAtiva() {
         return predicaoAtiva;
     }
-
 }

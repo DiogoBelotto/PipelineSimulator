@@ -2,7 +2,7 @@ package processador;
 
 import java.util.Arrays;
 
-public class InstructionFetch{
+public class InstructionFetch {
     public static int pC;
     //Como nessa etapa a instrucaoAtual ainda não foi decodificada não é possível definir um objeto InstrucaoGenerica como nas outras etapas,
     //portanto seta apenas um vetor de String referente a instrucaoAtual atual para identificação
@@ -26,7 +26,8 @@ public class InstructionFetch{
     }
 
     public InstructionFetch(Processador processador) {
-        this.processador  = processador;
+        this.processador = processador;
+        instrucaoAtual = new String[]{"noop"};
         pC = 0;
     }
 
@@ -55,9 +56,12 @@ public class InstructionFetch{
                 System.arraycopy(instrucaoAtual, 0, instrucaoBEQ, 0, instrucaoAtual.length);
                 instrucaoBEQ[instrucaoBEQ.length - 1] = pCofBEQ;
                 instrucaoAtual = instrucaoBEQ;
-            } else pC++;
-        } else
+            } else {
+                pC++;
+            }
+        } else {
             pC++;
+        }
         return instrucaoAtual;
     }
 

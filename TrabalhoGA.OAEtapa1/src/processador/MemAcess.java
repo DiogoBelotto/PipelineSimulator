@@ -2,12 +2,13 @@ package processador;
 
 import instrucoes.InstrucaoGenerica;
 
-public class MemAcess{
+public class MemAcess {
     private final Processador processador;
     private InstrucaoGenerica instrucaoAtual;
 
     public MemAcess(Processador processador) {
         this.processador = processador;
+        instrucaoAtual = InstrucaoGenerica.noop();
     }
 
     @Override
@@ -17,8 +18,9 @@ public class MemAcess{
 
     public void memoryAcess() {
         InstrucaoGenerica instrucao = instrucaoAtual;
-        if (!instrucao.isValida())
+        if (!instrucao.isValida()) {
             return;
+        }
         switch (instrucao.getOpcode()) {
             case "lw":
                 processador.getR()[instrucao.getOper2()] = processador.getMemory()[instrucao.getTemp3()];
@@ -27,21 +29,18 @@ public class MemAcess{
                 processador.getMemory()[instrucao.getTemp3()] = instrucao.getOper3();
                 break;
             case "beq":
-                if(instrucao.getTemp3() == -1){
+                if (instrucao.getTemp3() == -1) {
                     processador.setDesvioIncorreto(true);
-                    InstructionFetch.pC = instrucao.getOper3()-1;
+                    InstructionFetch.pC = instrucao.getOper3() - 1;
                     processador.setTotalInstrucoesExec(processador.getTotalInstrucoesExec() - 1);
                 }
+                break;
             default:
                 break;
         }
     }
+
     public InstrucaoGenerica getInstrucaoAtual() {
-        if(instrucaoAtual == null){
-            InstrucaoGenerica instrucaoReturn = new InstrucaoGenerica();
-            instrucaoReturn.setOpcode("noop");
-            return instrucaoReturn;
-        }
         return instrucaoAtual;
     }
 
